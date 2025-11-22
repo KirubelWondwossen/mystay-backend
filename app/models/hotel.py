@@ -19,4 +19,4 @@ class Hotel(Base):
   manager_id = Column(Integer, ForeignKey('hotel_managers.id'), unique=True)
   manager = relationship('HotelManager', back_populates='hotel')
 
-  # rooms = relationship('Room', back_populates='hotel', cascade='all, delete-orphan')
+  rooms = relationship('Room', back_populates='hotel', cascade='all, delete-orphan')
