@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String
+from datetime import datetime
+from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -16,3 +17,16 @@ class HotelManager(Base):
   password = Column(String, nullable=True)
 
   hotel = relationship('Hotel', back_populates='manager', uselist=False)
+
+
+# Guest User
+class Guest(Base):
+  '''Guest User Model'''
+  __tablename__ = 'guest'
+
+  id = Column(Integer, primary_key=True, index=True)
+  google_id = Column(String, unique=True)
+  email = Column(String, unique=True)
+  full_name = Column(String, nullable=True)
+  avater_url = Column(String, nullable=True)
+  created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
