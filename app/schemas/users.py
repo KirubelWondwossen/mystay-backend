@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -21,3 +22,18 @@ class HotelManagerDisplay(BaseModel):
 
   class Config:
     orm_mode = True
+
+# Guest Output
+class GuestDisplay(BaseModel):
+  id: int
+  email: str
+  full_name: str
+  avater_url: str
+  created_at: datetime
+
+  model_config = {
+    'from_attributes': True
+  }
+
+  # class Config:
+  #   orm_mode = True
