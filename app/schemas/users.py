@@ -10,6 +10,7 @@ class HotelManagerCreate(BaseModel):
   name: str
   email: str
   phone: str | None = None
+  password: str
 
 
 # Output Schema Hotel Manager
