@@ -2,28 +2,44 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
-from app.schemas.hotel import HotelDisplay
+
+# Admin login schema
+class AdminLogin(BaseModel):
+  email: str
+  password: str
 
 
-# Input Schema Hotel Manager
-class HotelManagerCreate(BaseModel):
+# Base hotel manager schema
+class HotelManagerBase(BaseModel):
   name: str
   email: str
   phone: str | None = None
+
+
+# Input Schema Hotel Manager
+class HotelManagerCreate(HotelManagerBase):
   password: str
 
 
 # Output Schema Hotel Manager
-class HotelManagerDisplay(BaseModel):
+class HotelManagerDisplay(HotelManagerBase):
   id: int
-  name: str
-  email: str
-  phone: str | None = None
-  is_approved: bool
-  hotel: Optional[HotelDisplay] = None
 
   class Config:
     orm_mode = True
+
+
+# Hotel manager login
+class HotelManagerLogin(BaseModel):
+  email: str
+  password: str
+
+
+# Hotel manager update password
+class HotelManagerPasswordUpdate(BaseModel):
+  current_password: str
+  new_password: str
+
 
 # Guest Output
 class GuestDisplay(BaseModel):
@@ -39,8 +55,3 @@ class GuestDisplay(BaseModel):
 
   # class Config:
   #   orm_mode = True
-
-
-class AdminLogin(BaseModel):
-  email: str
-  password: str
