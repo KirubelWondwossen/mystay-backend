@@ -1,6 +1,8 @@
+from fastapi import HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import JWTError, jwt
 import os
 
 # Password Hashing
@@ -27,3 +29,16 @@ def create_admin_token(admin):
     }
 
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+# OAuth2 scheme to extract "Authorization: Bearer <token>"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
+
+# Decode JWT
+def decode_token(token: str):
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
