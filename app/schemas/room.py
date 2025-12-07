@@ -14,13 +14,13 @@ class RoomBase(BaseModel):
 
 
 class RoomUpdate(BaseModel):
-  room_number: Optional[str]
-  room_type: Optional[RoomType]
-  price_per_night: Optional[float]
-  description: Optional[str]
-  bed_type: Optional[BedType]
-  image_url: Optional[str]
-  available: Optional[bool]
+  room_number: Optional[str] = None
+  room_type: Optional[RoomType]  = None
+  price_per_night: Optional[float] = None
+  description: Optional[str] = None
+  bed_type: Optional[BedType] = None
+  image_url: Optional[str] = None
+  available: Optional[bool] = None
 
 
 class RoomDisaply(RoomBase):
