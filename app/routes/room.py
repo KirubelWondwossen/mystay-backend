@@ -6,7 +6,7 @@ from app.crud.room import create_new_room, get_all_rooms, get_one_room
 from app.models.hotel import Hotel
 from app.models.room import Room
 
-from app.schemas.room import RoomBase, RoomDisaply
+from app.schemas.room import RoomBase, RoomDisaply, RoomUpdate
 from app.database import get_db
 
 
@@ -32,12 +32,42 @@ def get_room(hotel_id, room_id, db: Session = Depends(get_db)):
 def create_room(hotel_id, new_room: RoomBase, db: Session = Depends(get_db)):
   return create_new_room(hotel_id, new_room, db)
 
+# Update room
+@router.patch('/{hotel_id}/rooms/{room_id}')
+def update_room(
+  room_id: int,
+  room_update: RoomUpdate,
+  db: Session = Depends(get_db),
+  token_data = Depends(require_hotel_manager)
+):
+
+  room = db.query(Room).filter(Room.id == room_id).first()
+
+  if not room:
+    raise HTTPException(status_code=404, detail='Room not found')
+
+  # Check update is by right hotel owner
+  hotel = db.query(Hotel).filter(Hotel.id == room.hotel_id).first()
+
+  if hotel.manager_id != int(token_data['sub']):
+    raise HTTPException(status_code=403, detail='Not allowed')
+
+  update_data = room_update.model_dump(exclude_unset=True)
+
+  for key, value in update_data.items():
+    setattr(room, key, value)
+
+  db.commit()
+  db.refresh(room)
+  return room
+
 # Delete room
-@router.delete('/rooms/{room_id}')
+@router.delete('/{hotel_id}/rooms/{room_id}')
 def delete_room(
   room_id: int,
   db: Session = Depends(get_db),
-  token_data = Depends(require_hotel_manager)):
+  token_data = Depends(require_hotel_manager)
+  ):
 
   room = db.query(Room).filter(Room.id == room_id).first()
   if not room:
