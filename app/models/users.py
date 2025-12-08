@@ -38,7 +38,7 @@ class HotelManager(Base):
 # Guest User
 class Guest(Base):
   '''Guest User Model'''
-  __tablename__ = 'guest'
+  __tablename__ = 'guests'
 
   id = Column(Integer, primary_key=True, index=True)
   google_id = Column(String, unique=True)
@@ -46,3 +46,5 @@ class Guest(Base):
   full_name = Column(String, nullable=True)
   avater_url = Column(String, nullable=True)
   created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+  bookings = relationship('Booking', back_populates="guest")

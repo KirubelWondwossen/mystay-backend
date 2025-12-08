@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String, Enum as SQLEnum
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from enum import Enum
@@ -12,6 +12,7 @@ class RoomType(str, Enum):
   SUITE = 'suite'
   DELUXE = 'deluxe'
   STANDARD = 'standard'
+
 
 class BedType(str, Enum):
   QUEEN = 'queen'
@@ -32,3 +33,10 @@ class Room(Base):
 
   hotel_id = Column(Integer, ForeignKey('hotels.id', ondelete='CASCADE'), nullable=False)
   hotel = relationship('Hotel', back_populates='rooms')
+  bookings = relationship('Booking', back_populates="room")
+
+  # Unique room_number per Hotel
+  __table_args__ = (
+    UniqueConstraint('hotel_id', 'room_number'),
+)
+
