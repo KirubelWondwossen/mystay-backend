@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
-from app.core.dependencies import require_admin, require_guest, require_hotel_manager
 
+from app.core.dependencies import require_guest, require_guest_manager, require_hotel_manager
 from app.database import get_db
-from app.models.bookings import Booking
+from app.models.bookings import Booking, BookingStatus
+from app.models.hotel import Hotel
 from app.models.payments import Payment, PaymentMethod
 from app.models.room import Room
 from app.models.users import Guest
 from app.schemas.bookings import BookingCreate, BookingDisplay
-from app.utils.booking_services import is_room_available
+from app.utils.booking_services import can_manager_update_booking, can_user_update_booking, is_room_available
 
 
 router = APIRouter(prefix='/bookings', tags=['Bookings'])
@@ -91,29 +92,92 @@ def view_booking(
 
   booking = db.query(Booking).filter(Booking.id == booking_id).first()
 
-  if not booking:
-    raise HTTPException(status_code=404, detail='Booking not found')
+  if not booking or booking.guest_id != int(guest_data['sub']):
+    raise HTTPException(status_code=400, detail='Can\'t access booking')
 
   return booking
 
 # Cancel booking
-@router.patch('/{booking_id}/cancel', response_model=BookingDisplay)
+@router.patch('/{booking_id}/cancel')
 def cancel_booking(
   booking_id: int,
   db: Session = Depends(get_db),
-  guest_data = Depends(require_guest)):
-  # works only for pending and confirmed
-  pass
+  user_data = Depends(require_guest_manager)):
+
+  booking = db.query(Booking).filter(Booking.id == booking_id).first()
+
+  can_user_update_booking(user_data, booking, db)
+
+  if booking.status == BookingStatus.CONFIRMED or booking.status == BookingStatus.PENDING:
+    booking.status = BookingStatus.CANCELLED
+    db.commit()
+    db.refresh(booking)
+
+    return {
+      'message' : 'Booking has been successfully cancelled'
+    }
+
+  raise HTTPException(status_code=409, detail='Booking can not be cancelled')
 
 # Confirm booking
-@router.patch('/{booking_id}/confirm', response_model=BookingDisplay)
-def confirm_booking(booking_id: int, guest_data):
-  pass
+@router.patch('/{booking_id}/confirm')
+def confirm_booking(
+  booking_id: int,
+  db: Session = Depends(get_db),
+  manager_data = Depends(require_hotel_manager )):
+
+  booking = db.query(Booking).filter(Booking.id == booking_id).first()
+
+  can_manager_update_booking(manager_data, booking, db)
+
+  if booking.status == BookingStatus.PENDING:
+    booking.status = BookingStatus.CONFIRMED
+    db.commit()
+    db.refresh(booking)
+
+    return {
+      'message' : 'Booking has been successfully confirmed'
+    }
+
+  raise HTTPException(status_code=409, detail='Booking can not be confirmed')
+
+# Complete booking
+@router.patch('/{booking_id}/complete')
+def complete_booking(
+  booking_id: int,
+  db: Session = Depends(get_db),
+  manager_data = Depends(require_hotel_manager)
+):
+
+  booking = db.query(Booking).filter(Booking.id == booking_id).first()
+
+  can_manager_update_booking(manager_data, booking, db)
+
+
+  if booking.status == BookingStatus.CONFIRMED:
+    booking.status = BookingStatus.COMPLETED
+    db.commit()
+    db.refresh(booking)
+
+    return {
+      'message' : 'Booking has been successfully completed'
+    }
+
+  raise HTTPException(status_code=409, detail='Booking can not be confirmed')
 
 # Get all bookings for one hotel
 @router.get('hotels/{hotel_id}', response_model=list[BookingDisplay])
 def view_all_hotel_bookings(
   hotel_id: int,
-  token_data = Depends(require_hotel_manager)):
+  manager_data = Depends(require_hotel_manager),
+  db: Session = Depends(get_db)):
 
-  pass
+  hotel = db.query(Hotel).filter(Hotel.id == hotel_id).first()
+
+  if not hotel:
+    raise HTTPException(status_code=404, detail='Not found')
+
+  if hotel.manager_id != int(manager_data['sub']):
+    raise HTTPException(status_code=403, detail='Not have permission to access')
+
+  return db.query(Booking).filter(Booking.hotel_id == hotel_id)
