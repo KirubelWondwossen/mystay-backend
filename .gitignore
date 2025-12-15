@@ -9,3 +9,6 @@ __pycache__/
 
 # Mock DB for Testing
 app.db
+
+# Static Files
+app/uploads
