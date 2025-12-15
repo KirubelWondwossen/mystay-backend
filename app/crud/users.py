@@ -9,7 +9,7 @@ def create_hotel_manager(db: Session, new_manager: HotelManagerCreate):
     name = new_manager.name,
     email = new_manager.email,
     phone = new_manager.phone,
-    password = new_manager.password
+    password = new_manager.password,
   )
 
   db.add(db_manager)
