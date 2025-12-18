@@ -54,6 +54,20 @@ def update_password(
   return {'message': 'Password Successfully Updated'}
 
 
+# Manager profile
+@router.get('/me', response_model=HotelManagerDisplay)
+def manager_profile(
+  token = Depends(require_hotel_manager),
+  db: Session = Depends(get_db)
+  ):
+  manager = db.query(HotelManager).filter(HotelManager.id == int(token['sub'])).first()
+
+  if not manager:
+    raise HTTPException(status_code=404, detail='No manager found')
+
+  return manager
+
+
 # Get all managers for Admin
 @router.get('/', response_model=list[HotelManagerDisplay], dependencies=[Depends(require_admin)])
 def get_managers(db: Session = Depends(get_db)):
