@@ -32,7 +32,7 @@ class HotelManager(Base):
     last_login = Column(DateTime, nullable=True)
 
     # Relation to hotel
-    hotel = relationship("Hotel", back_populates="manager")
+    hotel = relationship("Hotel", back_populates="manager", uselist=False)
 
 
 # Guest User
