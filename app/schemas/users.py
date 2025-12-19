@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
+from app.schemas.hotel import HotelSimpleView
+
 
 # Admin login schema
 class AdminLogin(BaseModel):
@@ -24,6 +26,7 @@ class HotelManagerCreate(HotelManagerBase):
 # Output Schema Hotel Manager
 class HotelManagerDisplay(HotelManagerBase):
   id: int
+  hotel: Optional[HotelSimpleView] = None
 
   class Config:
     orm_mode = True

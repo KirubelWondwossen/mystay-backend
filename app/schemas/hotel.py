@@ -16,6 +16,14 @@ class HotelBase(BaseModel):
   exact_location: Location
 
 
+class HotelSimpleView(BaseModel):
+  id: int
+  name: str
+
+  class Config:
+    orm_mode = True
+
+
 class HotelUpdate(BaseModel):
   name: Optional[str] = None
   description: Optional[str] = None
