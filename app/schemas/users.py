@@ -44,6 +44,15 @@ class HotelManagerPasswordUpdate(BaseModel):
   new_password: str
 
 
+# Hotel Manager forget password
+class HotelManagerForgetPassword(BaseModel):
+  email: str
+
+
+class HotelManagerResetPassword(BaseModel):
+  new_password: str
+  token: str
+
 # Guest Output
 class GuestDisplay(BaseModel):
   id: int

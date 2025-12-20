@@ -4,6 +4,7 @@ from app.models.hotel import Hotel
 from app.models.room import Room
 from app.models.bookings import Booking
 from app.models.payments import Payment
+from app.models.password_reset import PasswordResetToken
 
 print("Creating tables in database...")
 Base.metadata.create_all(bind=engine)
