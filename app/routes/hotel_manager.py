@@ -1,13 +1,17 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import require_admin, require_hotel_manager
-from app.core.security import create_manager_token, hash_password, verify_password
+from app.core.dependencies import FRONTEND_RESET_PASSWORD_URL, require_admin, require_hotel_manager
+from app.core.security import create_manager_token, generate_reset_token, hash_password, hash_token, verify_password
 from app.crud.users import get_all_hotel_managers, get_hotel_manager
 from app.database import get_db
+from app.models.password_reset import PasswordResetToken
 from app.models.users import HotelManager
-from app.schemas.users import HotelManagerDisplay, HotelManagerLogin, HotelManagerPasswordUpdate
+from app.schemas.users import HotelManagerDisplay, HotelManagerForgetPassword, HotelManagerLogin, HotelManagerPasswordUpdate, HotelManagerResetPassword
+from app.utils.email_service import send_password_reset_email
 
 
 router = APIRouter(prefix='/hotelmanager', tags=['HotelManager'])
@@ -53,6 +57,87 @@ def update_password(
 
   return {'message': 'Password Successfully Updated'}
 
+
+@router.post('/forgot-password')
+def forget_password(
+  payload: HotelManagerForgetPassword,
+  db: Session = Depends(get_db)
+  ):
+  email = payload.email
+
+  if not email:
+    raise HTTPException(status_code=400, detail="Email is required")
+
+  manager = db.query(HotelManager).filter(HotelManager.email == email).first()
+
+  response_message = {
+      "message": "If the email exists, password reset instructions have been sent."
+    }
+
+  if not manager:
+    return response_message
+
+# Invalidate previous tokens
+  db.query(PasswordResetToken).filter(
+      PasswordResetToken.user_id == manager.id,
+      PasswordResetToken.is_used == False
+  ).update({"is_used": True})
+
+  raw_token = generate_reset_token()
+  token_hash = hash_token(raw_token)
+
+  reset_token = PasswordResetToken(
+    user_id = manager.id,
+    token_hash = token_hash,
+    expires_at=datetime.utcnow() + timedelta(minutes=30),
+    is_used = False
+  )
+
+  db.add(reset_token)
+  db.commit()
+
+  reset_link = f"{FRONTEND_RESET_PASSWORD_URL}?token={raw_token}"
+
+  send_password_reset_email(
+    to_email=manager.email,
+    reset_link=reset_link
+  )
+
+  return response_message
+
+@router.post('/reset-password')
+def reset_password(
+  payload: HotelManagerResetPassword,
+  db: Session = Depends(get_db)
+  ):
+
+  token_hash = hash_token(payload.token)
+
+  reset_token = db.query(PasswordResetToken).filter(
+    PasswordResetToken.token_hash == token_hash,
+    PasswordResetToken.is_used == False
+  ).first()
+
+  if not reset_token:
+    raise HTTPException(status_code=400, detail='Invalid or expired token')
+
+  if reset_token.expires_at < datetime.utcnow():
+    raise HTTPException(status_code=400, detail='Token has expired')
+
+  manager = db.query(HotelManager).filter(HotelManager.id == reset_token.user_id).first()
+
+  if not manager:
+    raise HTTPException(status_code=400, detail='Invalid token')
+
+  manager.password = hash_password(payload.new_password)
+
+  reset_token.is_used = True
+
+  db.commit()
+
+  return {
+    'message': 'Password has been reset successfully'
+  }
 
 # Manager profile
 @router.get('/me', response_model=HotelManagerDisplay)
