@@ -1,4 +1,10 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from os import access
+from typing import Optional
+
+from urllib.parse import urlparse
+
+from fastapi import APIRouter, Depends, Query, Request, HTTPException
+from fastapi.responses import RedirectResponse
 
 from sqlalchemy.orm import Session
 
@@ -12,22 +18,39 @@ router = APIRouter(prefix='/auth/google', tags=['Google OAuth'])
 
 # Login to redirect user
 @router.get('/login')
-async def google_login(request: Request):
-    redirect_uri = request.url_for('google_callback')
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+async def google_login(
+    request: Request,
+     redirect: Optional[str] = Query(
+        default=None,
+        description="Frontend URL to redirect to after successful login",
+        example="http://127.0.0.1:5173/dashboard",
+    ),
+    ):
+    callback_url = request.url_for('google_callback')
+
+    return await oauth.google.authorize_redirect(
+        request,
+        callback_url,
+        state=redirect,
+    )
 
 
 # callback from google
-@router.get("/callback")
-async def google_callback(request: Request, db: Session = Depends(get_db)):
+@router.get("/callback",  response_class=RedirectResponse,)
+async def google_callback(
+    request: Request,
+    db: Session = Depends(get_db)
+):
 
     # Fetch token from Google
-    token = await oauth.google.authorize_access_token(request)
+    response_token = await oauth.google.authorize_access_token(request)
 
     # Get user info
-    user_info = token.get("userinfo")
+    user_info = response_token.get("userinfo")
     if user_info is None:
-        raise HTTPException(status_code=400, detail="Unable to get user info")
+        raise HTTPException(
+            status_code=400, detail="Unable to get user info"
+        )
 
     google_id = user_info['sub']
     email = user_info.get('email')
@@ -47,9 +70,35 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(guest)
 
-    token = create_guest_token(guest)
+    access_token = create_guest_token(guest)
 
-    return {
-        'guest': GuestDisplay.from_orm(guest),
-        'access_token': token
-    }
+    state = request.query_params.get("state")
+
+    # Default fallback (safety)
+    frontend_redirect = "http://127.0.0.1:5173"
+
+    if state:
+        parsed = urlparse(state)
+
+        # Whitelist allowed redirect hosts
+        if (
+            parsed.scheme in ("http", "https")
+            and parsed.hostname in {
+                "localhost",
+                "127.0.0.1",
+            }
+        ):
+            frontend_redirect = state
+
+    response = RedirectResponse(url=frontend_redirect)
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=60 * 60 * 24,  # 1 day
+    )
+
+    return response
