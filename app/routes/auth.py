@@ -1,6 +1,6 @@
 from typing import Optional
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from fastapi.responses import RedirectResponse
@@ -88,15 +88,8 @@ async def google_callback(
         ):
             frontend_redirect = state
 
-    response = RedirectResponse(url=frontend_redirect)
+    params = urlencode({"token": access_token})
 
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=False,
-        secure=False,
-        samesite="lax",
-        max_age=60 * 60 * 24,  # 1 day
+    return RedirectResponse(
+        url=f"{frontend_redirect}?{params}"
     )
-
-    return response
