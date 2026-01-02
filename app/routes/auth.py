@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from urllib.parse import urlparse, urlencode
@@ -24,7 +25,10 @@ async def google_login(
         example="http://127.0.0.1:5173/dashboard",
     ),
     ):
-    callback_url = request.url_for('google_callback')
+
+    callback_url = os.getenv("GOOGLE_REDIRECT_URI")
+    if not callback_url:
+        raise RuntimeError("GOOGLE_REDIRECT_URI is not set")
 
     return await oauth.google.authorize_redirect(
         request,
